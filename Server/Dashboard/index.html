@@ -501,6 +501,80 @@
                 flex: 1;
             }
         }
+
+        /* Device Status Badge */
+        .device-badge {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 18px;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+            box-shadow: var(--shadow-md);
+            transition: all 0.3s ease;
+        }
+        .device-badge.offline {
+            background: rgba(254, 226, 226, 0.9);
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+        .device-badge.online {
+            background: rgba(209, 250, 229, 0.9);
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+        .wifi-icon {
+            width: 18px;
+            height: 18px;
+        }
+        .device-badge.online .wifi-icon path, .device-badge.online .wifi-icon line {
+            animation: wifiPulse 1.5s infinite alternate;
+        }
+        @keyframes wifiPulse {
+            0% { opacity: 0.2; }
+            100% { opacity: 1; }
+        }
+
+        /* Tooltip for IP Address */
+        .device-badge .tooltip {
+            visibility: hidden;
+            width: 120px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px 0;
+            position: absolute;
+            z-index: 101;
+            top: 120%; /* Position below the badge */
+            left: 50%;
+            margin-left: -60px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.8rem;
+            font-weight: normal;
+        }
+        .device-badge .tooltip::after {
+            content: "";
+            position: absolute;
+            bottom: 100%; /* Arrow pointing up */
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: transparent transparent #333 transparent;
+        }
+        .device-badge:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
     </style>
 </head>
 <body>
@@ -508,8 +582,19 @@
         <button class="action-btn" onclick="openSettings()">⚙️ Configuration</button>
         <button class="action-btn" onclick="openModeManager()">📋 Mode Manager</button>
     </div>
-    
     <div id="connectionStatus" class="connection-status">Connecting...</div>
+
+    <div id="deviceBadge" class="device-badge offline">
+        <svg class="wifi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
+            <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
+            <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+            <line x1="12" y1="20" x2="12.01" y2="20"></line>
+        </svg>
+        <span id="deviceStatusText">Device Offline</span>
+        <span id="wifiNameText"></span>
+        <span class="tooltip" id="ipTooltip">IP: Unknown</span>
+    </div>
 
     <!-- Custom Dialog Overlay -->
     <div class="overlay" id="confirmOverlay">
@@ -703,6 +788,8 @@
         document.getElementById('setServerHost').value = serverUrl;
 
         let ws;
+        let espWatchdog;
+        
         function connectWebSocket() {
             if (ws) ws.close(); // Close existing if any
             ws = new WebSocket(serverUrl);
@@ -762,6 +849,31 @@
         connectWebSocket();
 
         function updateDashboard(data) {
+            // --- Watchdog: Device Online/Offline Tracker ---
+            const badge = document.getElementById('deviceBadge');
+            const statusText = document.getElementById('deviceStatusText');
+            const wifiText = document.getElementById('wifiNameText');
+            const ipTooltip = document.getElementById('ipTooltip');
+            
+            badge.classList.remove('offline');
+            badge.classList.add('online');
+            statusText.innerText = 'Device Online';
+            
+            if(data.wifi) {
+                wifiText.innerText = `(${data.wifi})`;
+            }
+            if(data.ip) {
+                ipTooltip.innerText = `IP: ${data.ip}`;
+            }
+
+            clearTimeout(espWatchdog);
+            espWatchdog = setTimeout(() => {
+                badge.classList.remove('online');
+                badge.classList.add('offline');
+                statusText.innerText = 'Device Offline';
+                wifiText.innerText = '';
+            }, 5000); // 5 seconds without ping = offline
+
             // 1. Update Water Height & Text
             const level = data.level;
             document.getElementById('waterLevel').style.height = level + '%';

@@ -319,10 +319,14 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length) {
 
 void sendDataToServer() {
   if (WiFi.status() == WL_CONNECTED) {
-    StaticJsonDocument<200> doc;
+    StaticJsonDocument<512> doc;
+    doc["command"] = "STATUS";
     doc["level"] = waterLevelPercent;
     doc["pump"] = pumpStatus;
     doc["temp"] = temperature;
+    doc["wifi"] = WiFi.SSID();
+    doc["ip"] = WiFi.localIP().toString();
+    doc["rssi"] = WiFi.RSSI();
     
     String mode;
     if (maxTimeErrorState) {
