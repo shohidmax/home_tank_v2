@@ -534,11 +534,35 @@
             width: 18px;
             height: 18px;
         }
-        .device-badge.online .wifi-icon path, .device-badge.online .wifi-icon line {
-            animation: wifiPulse 1.5s infinite alternate;
+        
+        /* Default Offline State (Blinking Dot Only) */
+        .device-badge .wifi-band-1, 
+        .device-badge .wifi-band-2, 
+        .device-badge .wifi-band-3 {
+            opacity: 0.2;
+            transition: opacity 0.3s;
         }
+        
+        /* Online Pulses only when searching/connecting, solid otherwise */
+        .device-badge.offline .wifi-dot {
+            animation: wifiPulse 1s infinite alternate;
+        }
+
+        /* Signal Strength Classes */
+        .signal-excellent .wifi-band-1,
+        .signal-excellent .wifi-band-2,
+        .signal-excellent .wifi-band-3 { opacity: 1; }
+        
+        .signal-good .wifi-band-1,
+        .signal-good .wifi-band-2 { opacity: 1; }
+        .signal-good .wifi-band-3 { opacity: 0.2; }
+
+        .signal-weak .wifi-band-1 { opacity: 1; }
+        .signal-weak .wifi-band-2,
+        .signal-weak .wifi-band-3 { opacity: 0.2; }
+
         @keyframes wifiPulse {
-            0% { opacity: 0.2; }
+            0% { opacity: 0.1; }
             100% { opacity: 1; }
         }
 
@@ -581,20 +605,23 @@
     <div class="top-nav">
         <button class="action-btn" onclick="openSettings()">⚙️ Configuration</button>
         <button class="action-btn" onclick="openModeManager()">📋 Mode Manager</button>
+        <button class="action-btn" style="color: #dc2626; border-color: rgba(220, 38, 38, 0.3);" onclick="confirmCommand('RESTART')">🔄 Restart ESP32</button>
     </div>
     <div id="connectionStatus" class="connection-status">Connecting...</div>
 
     <div id="deviceBadge" class="device-badge offline">
         <svg class="wifi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
-            <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
-            <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
-            <line x1="12" y1="20" x2="12.01" y2="20"></line>
+            <path class="wifi-band-3" d="M5 12.55a11 11 0 0 1 14.08 0"></path>
+            <path class="wifi-band-2" d="M1.42 9a16 16 0 0 1 21.16 0"></path>
+            <path class="wifi-band-1" d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+            <line class="wifi-dot" x1="12" y1="20" x2="12.01" y2="20"></line>
         </svg>
         <span id="deviceStatusText">Device Offline</span>
         <span id="wifiNameText"></span>
         <span class="tooltip" id="ipTooltip">IP: Unknown</span>
     </div>
+
+    <div id="alertBox" style="display:none; padding:15px; margin: 80px auto 0 auto; border-radius:8px; max-width:600px; text-align:center; font-size:0.95rem; border:1px solid transparent; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);"></div>
 
     <!-- Custom Dialog Overlay -->
     <div class="overlay" id="confirmOverlay">
@@ -868,11 +895,26 @@
 
             clearTimeout(espWatchdog);
             espWatchdog = setTimeout(() => {
-                badge.classList.remove('online');
+                badge.classList.remove('online', 'signal-excellent', 'signal-good', 'signal-weak');
                 badge.classList.add('offline');
                 statusText.innerText = 'Device Offline';
                 wifiText.innerText = '';
+                ipTooltip.innerText = 'IP: Unknown';
             }, 5000); // 5 seconds without ping = offline
+
+            // Update Signal Strength (RSSI)
+            badge.classList.remove('signal-excellent', 'signal-good', 'signal-weak');
+            if (data.rssi !== undefined) {
+                const rssi = parseInt(data.rssi);
+                if (rssi > -60) {
+                    badge.classList.add('signal-excellent');
+                } else if (rssi > -75) {
+                    badge.classList.add('signal-good');
+                } else {
+                    badge.classList.add('signal-weak');
+                }
+                ipTooltip.innerText += ` (RSSI: ${rssi} dBm)`;
+            }
 
             // 1. Update Water Height & Text
             const level = data.level;
@@ -900,16 +942,20 @@
             const alertBox = document.getElementById('alertBox');
 
             // Reset alert box
-            alertBox.style.display = 'none';
+            if (alertBox) {
+                alertBox.style.display = 'none';
+            }
             modeEl.style.color = '#666'; // Default color
 
             if (data.mode === "MAX_TIME_ERROR") {
                 modeEl.innerHTML = "🚨 <b>SYSTEM LOCKED</b> (Ran >60 mins. Hard Reset ESP32)";
                 modeEl.style.color = "#8b0000"; // dark red
-                alertBox.style.display = 'block';
-                alertBox.style.background = '#f8d7da';
-                alertBox.style.color = '#721c24';
-                alertBox.innerHTML = `<strong>CRITICAL ERROR:</strong> Pump ran continuously for 60 minutes. System is permanently locked to prevent overflow. Hardware reset required.`;
+                if (alertBox) {
+                    alertBox.style.display = 'block';
+                    alertBox.style.background = '#f8d7da';
+                    alertBox.style.color = '#721c24';
+                    alertBox.innerHTML = `<strong>CRITICAL ERROR:</strong> Pump ran continuously for 60 minutes. System is permanently locked to prevent overflow. Hardware reset required.`;
+                }
             } else if (data.mode === "FLOW_FAULT_WAIT") {
                 const sec = data.ff_sec_left || 0;
                 const min = Math.floor(sec / 60);
@@ -918,10 +964,12 @@
                 modeEl.innerHTML = "⚠️ <b>DRY RUN WAIT</b>";
                 modeEl.style.color = "#FF8C00"; // Dark Orange
                 
-                alertBox.style.display = 'block';
-                alertBox.style.background = '#fff3cd';
-                alertBox.style.color = '#856404';
-                alertBox.innerHTML = `<strong>DRY RUN FAULT:</strong> Water did not rise in time. Auto-retrying in <b>${min}m ${remSec}s</b>.`;
+                if (alertBox) {
+                    alertBox.style.display = 'block';
+                    alertBox.style.background = '#fff3cd';
+                    alertBox.style.color = '#856404';
+                    alertBox.innerHTML = `<strong>DRY RUN FAULT:</strong> Water did not rise in time. Auto-retrying in <b>${min}m ${remSec}s</b>.`;
+                }
             } else if (data.mode === "ERROR_COOLDOWN") {
                 modeEl.innerHTML = "🚨 <b>ERROR MODE</b> (Pump stopped. Waiting 15 mins...)";
                 modeEl.style.color = "#dc3545";
@@ -939,6 +987,7 @@
             if (cmd === 'PUMP_ON') msg = "FORCE ON the pump?";
             if (cmd === 'PUMP_OFF') msg = "FORCE OFF the pump?";
             if (cmd === 'AUTO') msg = "Switch to AUTO mode?";
+            if (cmd === 'RESTART') msg = "Are you sure you want to REBOOT the ESP32 Device remotely?";
             
             // Show Custom Dialog
             document.getElementById('dialogMessage').innerText = msg;

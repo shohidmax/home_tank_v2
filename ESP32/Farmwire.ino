@@ -124,6 +124,8 @@ void loadSettings();
 void saveSettings();
 void handleRoot();
 void handleSaveConfig();
+void handleResetWiFi();
+void handleFactoryReset();
 // OTA Functions
 void checkForFirmwareUpdate();
 String fetchLatestVersion();
@@ -220,6 +222,8 @@ void setup() {
   // 6. Start Web Server for Local Config
   server.on("/", handleRoot);
   server.on("/save", HTTP_POST, handleSaveConfig);
+  server.on("/reset_wifi", HTTP_POST, handleResetWiFi);
+  server.on("/factory_reset", HTTP_POST, handleFactoryReset);
   server.begin();
   Serial.println("HTTP server started");
 }
@@ -261,7 +265,7 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length) {
     Serial.printf("[WSc] Got text: %s\n", payload);
 
     // Parse JSON Command
-    StaticJsonDocument<200> doc;
+    StaticJsonDocument<1024> doc;
     DeserializationError error = deserializeJson(doc, payload);
     if (!error) {
       if (!doc.containsKey("command"))
@@ -286,6 +290,11 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length) {
       } else if (strcmp(command, "AUTO") == 0) {
         manualMode = false;
         beep(2, 50);
+      } else if (strcmp(command, "RESTART") == 0) {
+        Serial.println("Remote Restart Command received!");
+        beep(2, 200);
+        delay(500);
+        ESP.restart();
       } else if (strcmp(command, "SETTINGS") == 0) {
         // Parse settings
         if (doc.containsKey("min"))
@@ -319,7 +328,7 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length) {
 
 void sendDataToServer() {
   if (WiFi.status() == WL_CONNECTED) {
-    StaticJsonDocument<512> doc;
+    StaticJsonDocument<1024> doc;
     doc["command"] = "STATUS";
     doc["level"] = waterLevelPercent;
     doc["pump"] = pumpStatus;
@@ -718,7 +727,7 @@ void handleRoot() {
           "button:hover{background:#0056b3;}</style>";
   html += "</head><body>";
   html += "<div class=\"container\">";
-  html += "<h2 style=\"color:#007bff;\">🚰 ESP32 Settings Panel</h2>";
+  html += "<h2 style=\"color:#007bff;\"> ESP32 Settings Panel</h2>";
   html += "<form action=\"/save\" method=\"POST\">";
   
   html += "<label>WebSocket Server URL:</label>";
@@ -728,7 +737,20 @@ void handleRoot() {
   html += "<input type=\"number\" name=\"height\" value=\"" + String(TANK_HEIGHT_CM) + "\" min=\"50\" max=\"500\"><br>";
   
   html += "<button type=\"submit\">Save & Restart</button>";
-  html += "</form></div></body></html>";
+  html += "</form>";
+
+  html += "<hr style=\"margin: 25px 0; border: 0; border-top: 1px solid #eee;\">";
+  html += "<h3 style=\"color:#dc3545; margin-bottom:15px;\">⚠️ Danger Zone</h3>";
+  
+  html += "<form action=\"/reset_wifi\" method=\"POST\" style=\"margin-bottom:10px;\" onsubmit=\"return confirm('Are you sure you want to forget the saved WiFi network? You will need to reconfigure it.');\">";
+  html += "<button type=\"submit\" style=\"background:#ffc107; color:#333;\">🔄 Reset WiFi Network</button>";
+  html += "</form>";
+
+  html += "<form action=\"/factory_reset\" method=\"POST\" onsubmit=\"return confirm('WARNING: This will delete ALL saved settings and the WiFi network. Continue?');\">";
+  html += "<button type=\"submit\" style=\"background:#dc3545;\">🗑️ Hard Factory Reset</button>";
+  html += "</form>";
+  
+  html += "</div></body></html>";
   server.send(200, "text/html", html);
 }
 
@@ -764,6 +786,37 @@ void handleSaveConfig() {
   } else {
     server.send(400, "text/plain", "Missing Arguments.");
   }
+}
+
+void handleResetWiFi() {
+  String html = "<!DOCTYPE html><html><body style=\"font-family:sans-serif; text-align:center; margin-top:50px;\">";
+  html += "<h1 style=\"color:#ffc107;\">WiFi Credentials Cleared</h1>";
+  html += "<p>The ESP32 is restarting and will enter Hotspot mode <b>(Home_TANK)</b>.</p>";
+  html += "<p>Please connect to it to set up WiFi again.</p>";
+  html += "</body></html>";
+  server.send(200, "text/html", html);
+  
+  delay(1000);
+  WiFi.disconnect(true, true); // Erase saved WiFi credentials
+  delay(1000);
+  ESP.restart();
+}
+
+void handleFactoryReset() {
+  String html = "<!DOCTYPE html><html><body style=\"font-family:sans-serif; text-align:center; margin-top:50px;\">";
+  html += "<h1 style=\"color:red;\">Hard Reset Complete</h1>";
+  html += "<p>All settings have been wiped. The ESP32 is restarting.</p>";
+  html += "</body></html>";
+  server.send(200, "text/html", html);
+
+  delay(1000);
+  preferences.begin("farmwire", false);
+  preferences.clear(); // Clear all NVS data for this namespace
+  preferences.end();
+  
+  WiFi.disconnect(true, true); // Erase WiFi credentials too
+  delay(1000);
+  ESP.restart();
 }
 
 void beep(int times, int duration) {
