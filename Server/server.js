@@ -7,11 +7,11 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-const PORT = 8080;
+const PORT = 3000;
 
 // Serve the dashboard HTML file
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, '../Dashboard/index.html'));
+    res.sendFile(path.join(__dirname, 'Dashboard/index.html'));
 });
 
 // Broadcast function to send data to all connected clients
