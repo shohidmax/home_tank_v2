@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Water Tank</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        :root {
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --danger: #ef4444;
+            --danger-hover: #dc2626;
+            --success: #10b981;
+            --success-hover: #059669;
+            --bg: #f3f4f6;
+            --card-bg: rgba(255, 255, 255, 0.85);
+            --text-main: #111827;
+            --text-secondary: #6b7280;
+            --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --radius-md: 12px;
+            --radius-lg: 20px;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        h1 {
+            color: #1e3a8a;
+            margin-bottom: 30px;
+            margin-top: 40px;
+            font-size: 2.2rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 25px;
+            width: 100%;
+            max-width: 950px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            border-radius: var(--radius-lg);
+            padding: 30px;
+            box-shadow: var(--shadow-md);
+            text-align: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        h2 {
+            margin-top: 0;
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Realistic Water Tank Container */
+        .tank-container {
+            position: relative;
+            width: 160px;
+            margin: 20px auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Tank Cap */
+        .tank-cap {
+            width: 50px;
+            height: 15px;
+            background: #0d47a1;
+            border-radius: 5px 5px 0 0;
+            border: 2px solid #0a367a;
+            border-bottom: none;
+            z-index: 2;
+        }
+        
+        /* Tank Neck */
+        .tank-neck {
+            width: 70px;
+            height: 10px;
+            background: #1565c0;
+            border: 2px solid #0d47a1;
+            border-bottom: none;
+            border-radius: 3px 3px 0 0;
+            z-index: 2;
+        }
+
+        /* Main Tank Body */
+        .tank-wrapper {
+            position: relative;
+            width: 140px;
+            height: 180px;
+            border: 3px solid #0d47a1;
+            border-radius: 10px 10px 20px 20px;
+            background: rgba(21, 101, 192, 0.15);
+            /* Ribbed texture similar to Astral Sarita tank */
+            background-image: repeating-linear-gradient(
+                to bottom,
+                transparent,
+                transparent 15px,
+                rgba(21, 101, 192, 0.4) 15px,
+                rgba(21, 101, 192, 0.4) 22px
+            );
+            overflow: hidden;
+            box-shadow: inset 0 0 15px rgba(255,255,255,0.7), inset 0 10px 20px rgba(0,0,0,0.1), 0 5px 15px rgba(0,0,0,0.2);
+            z-index: 1;
+        }
+
+        /* The Animated Water */
+        .water {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 0%; /* Dynamic */
+            background: linear-gradient(180deg, rgba(64, 196, 255, 0.7) 0%, rgba(0, 145, 234, 0.9) 100%);
+            transition: height 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 20;
+        }
+
+        /* Dual Layer Wave Animation */
+        .water::before, .water::after {
+            content: "";
+            position: absolute;
+            left: -50%;
+            width: 200%;
+            height: 20px;
+            border-radius: 50%;
+            animation: waveX 2s infinite linear;
+        }
+        .water::before {
+            top: -10px;
+            background-color: rgba(64, 196, 255, 0.6);
+            animation-duration: 3s;
+        }
+        .water::after {
+            top: -5px;
+            background-color: rgba(64, 196, 255, 0.9);
+            animation-duration: 2.5s;
+            animation-direction: reverse;
+        }
+
+        @keyframes waveX {
+            0% { transform: translateX(0) scaleY(1); }
+            50% { transform: translateX(-25%) scaleY(0.7); }
+            100% { transform: translateX(-50%) scaleY(1); }
+        }
+
+        /* Water Drop Animation */
+        .water-flow {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 20px;
+            height: 100%;
+            z-index: 10;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.8s ease, visibility 0.8s ease;
+        }
+        .water-flow.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .drop {
+            position: absolute;
+            left: 50%;
+            width: 8px;
+            height: 14px;
+            background: rgba(0, 176, 255, 0.9);
+            border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+            transform: translateX(-50%);
+            /* Smooth acceleration fall curve */
+            animation: dropFall 0.75s infinite cubic-bezier(0.55, 0.085, 0.68, 0.53);
+            opacity: 0;
+            box-shadow: 0 0 5px rgba(0, 176, 255, 0.5);
+        }
+
+        .drop:nth-child(1) { animation-delay: 0s; }
+        .drop:nth-child(2) { animation-delay: 0.25s; }
+        .drop:nth-child(3) { animation-delay: 0.5s; }
+
+        @keyframes dropFall {
+            0% { top: -10px; opacity: 0; transform: translateX(-50%) scale(0.8); }
+            30% { opacity: 1; }
+            50% { transform: translateX(-50%) scale(0.9, 1.2); opacity: 1; }
+            85% { top: 85%; opacity: 0; transform: translateX(-50%) scale(0.5, 1.5); }
+            100% { top: 100%; opacity: 0; }
+        }
+
+        .percentage-text {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--text-main);
+            margin: 10px 0;
+            display: block;
+        }
+
+        .temp-display {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-top: 10px;
+        }
+
+        /* Control Buttons */
+        .status-badge {
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+            letter-spacing: 0.5px;
+        }
+
+        .status-on { background-color: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+        .status-off { background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+
+        .btn-container {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.95rem;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: var(--shadow-sm);
+        }
+
+        button:active { transform: scale(0.96); }
+
+        .btn-on { background-color: var(--success); color: white; }
+        .btn-on:hover { background-color: var(--success-hover); box-shadow: var(--shadow-md); transform: translateY(-2px); }
+
+        .btn-off { background-color: var(--danger); color: white; }
+        .btn-off:hover { background-color: var(--danger-hover); box-shadow: var(--shadow-md); transform: translateY(-2px); }
+
+        .btn-auto { background-color: var(--primary); color: white; width: 100%; margin-top: 15px; }
+        .btn-auto:hover { background-color: var(--primary-hover); box-shadow: var(--shadow-md); transform: translateY(-2px); }
+
+        .connection-status {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            font-size: 0.8rem;
+            padding: 5px 10px;
+            border-radius: 4px;
+            background: #ccc;
+            color: #333;
+            z-index: 100;
+        }
+
+        /* Top Actions Links */
+        .top-nav {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            display: flex;
+            gap: 12px;
+            z-index: 100;
+        }
+
+        .action-btn {
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.5);
+            border-radius: var(--radius-md);
+            padding: 10px 16px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-main);
+            cursor: pointer;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+        .action-btn:hover { background: #ffffff; color: var(--primary); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+
+        .form-group.checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        /* Settings Modal Styling */
+        .settings-form {
+            text-align: left;
+            margin-top: 20px;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+        .form-group input[type="number"], .form-group input[type="text"], .form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            background: #f9fafb;
+        }
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+            background: #ffffff;
+        }
+        .form-group input[type="checkbox"] {
+            transform: scale(1.3);
+            margin-right: 12px;
+            accent-color: var(--primary);
+        }
+
+        .mode-list {
+            list-style: none;
+            padding: 0;
+            margin: 15px 0 0 0;
+            max-height: 300px;
+            overflow-y: auto;
+            text-align: left;
+        }
+        .mode-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .mode-info strong {
+            display: block;
+            color: var(--text-main);
+            margin-bottom: 3px;
+        }
+        .mode-info span {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+        .mode-actions {
+            display: flex;
+            gap: 5px;
+        }
+        .btn-apply { background: var(--success); color: white; padding: 6px 12px; font-size: 0.85rem; border-radius: 4px; }
+        .btn-del { background: var(--danger); color: white; padding: 6px 12px; font-size: 0.85rem; border-radius: 4px; }
+        .btn-new-mode { width: 100%; background: #6610f2; color: white; padding: 12px; margin-top: 15px; border-radius: 6px; font-weight: bold; }
+        .btn-new-mode:hover { background: #520dc2; }
+
+        /* Custom Confirm Dialog */
+        .overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(17, 24, 39, 0.7);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .dialog-box {
+            background: white;
+            padding: 30px;
+            border-radius: var(--radius-xl);
+            text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            transform: scale(0.95) translateY(20px);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            max-width: 90%;
+            width: 320px;
+        }
+        .overlay.active .dialog-box {
+            transform: scale(1) translateY(0);
+            opacity: 1;
+        }
+        .dialog-box h3 {
+            margin-top: 0;
+            color: var(--text-main);
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+        .dialog-buttons {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 25px;
+            gap: 12px;
+        }
+        .btn-cancel {
+            background: #f3f4f6;
+            color: #4b5563;
+        }
+        .btn-cancel:hover { background: #e5e7eb; color: #1f2937; }
+        .btn-confirm {
+            background: var(--primary);
+            color: white;
+        }
+        .btn-confirm:hover { background: var(--primary-hover); }
+
+        /* Responsive Utilities */
+        .wide-dialog {
+            width: 100%;
+            max-width: 450px;
+        }
+
+        .flex-row-responsive {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+        }
+        .flex-row-responsive > div {
+            flex: 1;
+        }
+
+        @media (max-width: 600px) {
+            .top-nav {
+                flex-wrap: wrap;
+                width: calc(100% - 40px);
+                justify-content: center;
+            }
+            .action-btn {
+                flex: 1;
+                justify-content: center;
+                font-size: 0.8rem;
+                padding: 8px 10px;
+            }
+            h1 {
+                margin-top: 80px; /* Make room for wrapped header */
+                font-size: 1.8rem;
+            }
+            .flex-row-responsive {
+                flex-direction: column;
+                gap: 12px;
+            }
+            .dialog-box {
+                padding: 20px 15px;
+            }
+            .mode-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            .mode-actions {
+                width: 100%;
+            }
+            .mode-actions button {
+                flex: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="top-nav">
+        <button class="action-btn" onclick="openSettings()">⚙️ Configuration</button>
+        <button class="action-btn" onclick="openModeManager()">📋 Mode Manager</button>
+    </div>
+    
+    <div id="connectionStatus" class="connection-status">Connecting...</div>
+
+    <!-- Custom Dialog Overlay -->
+    <div class="overlay" id="confirmOverlay">
+        <div class="dialog-box">
+            <h3 id="dialogMessage">Are you sure?</h3>
+            <div class="dialog-buttons">
+                <button class="btn-cancel" onclick="closeDialog()">No, Cancel</button>
+                <button class="btn-confirm" id="dialogConfirmBtn">Yes, Proceed</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Overlay (Configuration) -->
+    <div class="overlay" id="settingsOverlay">
+        <div class="dialog-box wide-dialog">
+            <h3>⚙️ Configuration</h3>
+            <div class="settings-form">
+                <div class="form-group">
+                    <label>Server URL (ws:// or wss://):</label>
+                    <input type="text" id="setServerHost" value="wss://homepump.espserver.site/" placeholder="e.g. 192.168.1.5:8080">
+                </div>
+                <div class="form-group">
+                    <label>Start Pump at (%):</label>
+                    <input type="number" id="setMin" min="0" max="100">
+                </div>
+                <div class="form-group">
+                    <label>Stop Pump at (%):</label>
+                    <input type="number" id="setMax" min="0" max="100">
+                </div>
+                <div class="form-group">
+                    <label>Pre-Schedule Limit (%): <span>(Stop level before schedule)</span></label>
+                    <input type="number" id="setPre" min="0" max="100">
+                </div>
+                <div class="form-group">
+                    <label>Recovery Trigger (%): <span>(Catch-up trigger level)</span></label>
+                    <input type="number" id="setRec" min="0" max="100">
+                </div>
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="setSched"> 
+                    <label style="margin:0; font-weight:bold;">Enable Smart Schedules</label>
+                </div>
+                <div class="form-group flex-row-responsive">
+                    <div>
+                        <label>Time 1</label>
+                        <select id="setS1" style="width:100%; padding:8px; border-radius:6px; border:1px solid #ccc;">
+                            <!-- Options injected by JS -->
+                        </select>
+                    </div>
+                    <div>
+                        <label>Time 2</label>
+                        <select id="setS2" style="width:100%; padding:8px; border-radius:6px; border:1px solid #ccc;"></select>
+                    </div>
+                    <div>
+                        <label>Time 3</label>
+                        <select id="setS3" style="width:100%; padding:8px; border-radius:6px; border:1px solid #ccc;"></select>
+                    </div>
+                </div> <!-- MISSING DIV FIXED HERE -->
+                
+                <hr style="margin: 15px 0;">
+                <h4 style="margin:0 0 10px 0; color:#555;">Safety: Dry Run Protection</h4>
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="setFfEn" checked> 
+                    <label style="margin:0; font-weight:bold;">Enable Protection</label>
+                </div>
+                <div class="form-group flex-row-responsive">
+                    <div>
+                        <label>Wait (min)</label>
+                        <input type="number" id="setFfChk" min="1" max="60" value="5">
+                    </div>
+                    <div>
+                        <label>Min Inc (%)</label>
+                        <input type="number" id="setFfInc" min="1" max="100" value="4">
+                    </div>
+                    <div>
+                        <label>Retry In (min)</label>
+                        <input type="number" id="setFfRet" min="1" max="120" value="15">
+                    </div>
+                </div>
+            </div>
+            <div class="dialog-buttons" style="display: flex; gap: 10px;">
+                <button class="btn-confirm" style="flex: 1;" onclick="saveSettings()">Save Configuration</button>
+                <button class="btn-cancel" style="padding: 10px 15px; border-radius: 8px; font-weight: bold;" onclick="closeSettings()">✖</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mode Manager Overlay -->
+    <div class="overlay" id="modeOverlay">
+        <div class="dialog-box wide-dialog">
+            <h3>📋 Mode Manager</h3>
+            <ul class="mode-list" id="modeList">
+                <!-- Modes will be injected here via JS -->
+            </ul>
+            <button class="btn-new-mode" onclick="openCreateMode()">+ Create New Mode</button>
+            <button class="btn-cancel" style="width:100%; margin-top:10px;" onclick="closeModeManager()">Close</button>
+        </div>
+    </div>
+
+    <!-- Create New Mode Overlay -->
+    <div class="overlay" id="createModeOverlay">
+        <div class="dialog-box wide-dialog">
+            <h3>➕ Create New Mode</h3>
+            <div class="settings-form">
+                <div class="form-group">
+                    <label>Mode Name:</label>
+                    <input type="text" id="newModeName" placeholder="e.g. Holiday">
+                </div>
+                <div class="form-group">
+                    <label>Start Pump at (%):</label>
+                    <input type="number" id="newMin" min="0" max="100">
+                </div>
+                <div class="form-group">
+                    <label>Stop Pump at (%):</label>
+                    <input type="number" id="newMax" min="0" max="100">
+                </div>
+                <div class="form-group">
+                    <label>Pre-Schedule Limit (%):</label>
+                    <input type="number" id="newPre" min="0" max="100">
+                </div>
+                <div class="form-group">
+                    <label>Recovery Trigger (%):</label>
+                    <input type="number" id="newRec" min="0" max="100">
+                </div>
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="newSched"> 
+                    <label style="margin:0; font-weight:bold;">Enable Smart Schedules</label>
+                </div>
+                <div class="form-group flex-row-responsive">
+                    <div>
+                        <label>Time 1</label>
+                        <select id="newS1" style="width:100%; padding:8px; border-radius:6px; border:1px solid #ccc;"></select>
+                    </div>
+                    <div>
+                        <label>Time 2</label>
+                        <select id="newS2" style="width:100%; padding:8px; border-radius:6px; border:1px solid #ccc;"></select>
+                    </div>
+                    <div>
+                        <label>Time 3</label>
+                        <select id="newS3" style="width:100%; padding:8px; border-radius:6px; border:1px solid #ccc;"></select>
+                    </div>
+                </div>
+            </div>
+            <div class="dialog-buttons" style="display: flex; gap: 10px;">
+                <button class="btn-confirm" style="flex: 1;" onclick="saveNewMode()">Save Mode</button>
+                <button class="btn-cancel" style="padding: 10px 15px; border-radius: 8px; font-weight: bold;" onclick="closeCreateMode()">✖</button>
+            </div>
+        </div>
+    </div>
+
+    <h1>🚰 Water Tank Monitor</h1>
+
+    <div class="dashboard-grid">
+        <!-- Tank Level Card -->
+        <div class="card">
+            <h2>Live Water Level</h2>
+            <div class="tank-container">
+                <div class="tank-cap"></div>
+                <div class="tank-neck"></div>
+                <div class="tank-wrapper">
+                    <div class="water-flow" id="waterFlow">
+                        <div class="drop"></div>
+                        <div class="drop"></div>
+                        <div class="drop"></div>
+                    </div>
+                    <div class="water" id="waterLevel" style="height: 0%;"></div>
+                </div>
+            </div>
+            <span class="percentage-text" id="waterText">--%</span>
+            <div class="temp-display">🌡️ Temperature: <span id="tempVal">--</span> °C</div>
+        </div>
+
+        <!-- Pump Control Card -->
+        <div class="card">
+            <h2>Pump Control</h2>
+            
+            <div id="pumpStatus" class="status-badge status-off">Unknown State</div>
+            <div style="margin-bottom: 15px; font-size: 0.9rem; color: #666;" id="modeText">Mode: Waiting...</div>
+
+            <div class="btn-container">
+                <button class="btn-on" onclick="confirmCommand('PUMP_ON')">FORCE ON</button>
+                <button class="btn-off" onclick="confirmCommand('PUMP_OFF')">FORCE OFF</button>
+            </div>
+            <button class="btn-auto" onclick="confirmCommand('AUTO')">🔄 Switch to AUTO Mode</button>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. Server URL & Websocket Setup ---
+        const defaultUrl = 'wss://homepump.espserver.site/';
+        let serverUrl = localStorage.getItem('pumpServerUrl') || defaultUrl;
+        document.getElementById('setServerHost').value = serverUrl;
+
+        let ws;
+        function connectWebSocket() {
+            if (ws) ws.close(); // Close existing if any
+            ws = new WebSocket(serverUrl);
+
+            const statusEl = document.getElementById('connectionStatus');
+
+            ws.onopen = () => {
+                console.log('Connected to Server:', serverUrl);
+                statusEl.innerText = "🟢 Connected";
+                statusEl.style.background = "#d4edda";
+                statusEl.style.color = "#155724";
+            };
+
+            ws.onclose = () => {
+                console.log('Disconnected');
+                statusEl.innerText = "🔴 Disconnected";
+                statusEl.style.background = "#f8d7da";
+                statusEl.style.color = "#721c24";
+                
+                // Optional auto-reconnect logic could go here
+                // setTimeout(connectWebSocket, 5000); 
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    
+                    if (data.level !== undefined) {
+                        updateDashboard(data);
+                    }
+                    
+                    if (data.settings && !document.getElementById('settingsOverlay').classList.contains('active')) {
+                        document.getElementById('setMin').value = data.settings.min;
+                        document.getElementById('setMax').value = data.settings.max;
+                        document.getElementById('setPre').value = data.settings.pre;
+                        document.getElementById('setRec').value = data.settings.rec;
+                        document.getElementById('setSched').checked = data.settings.sched;
+                        
+                        document.getElementById('setS1').value = data.settings.s1 !== undefined ? data.settings.s1 : 8;
+                        document.getElementById('setS2').value = data.settings.s2 !== undefined ? data.settings.s2 : 14;
+                        document.getElementById('setS3').value = data.settings.s3 !== undefined ? data.settings.s3 : 20;
+
+                        if(data.settings.ff_en !== undefined) {
+                            document.getElementById('setFfEn').checked = data.settings.ff_en;
+                            document.getElementById('setFfChk').value = data.settings.ff_chk;
+                            document.getElementById('setFfInc').value = data.settings.ff_inc;
+                            document.getElementById('setFfRet').value = data.settings.ff_ret;
+                        }
+                    }
+                } catch (e) {
+                    console.log('Received text:', event.data);
+                }
+            };
+        }
+
+        // Initial connect
+        connectWebSocket();
+
+        function updateDashboard(data) {
+            // 1. Update Water Height & Text
+            const level = data.level;
+            document.getElementById('waterLevel').style.height = level + '%';
+            document.getElementById('waterText').innerText = level + '%';
+
+            // 2. Update Temperature
+            document.getElementById('tempVal').innerText = data.temp;
+
+            // 3. Update Pump Status Badge
+            const pumpEl = document.getElementById('pumpStatus');
+            const waterFlowEl = document.getElementById('waterFlow');
+            if (data.pump) {
+                pumpEl.innerText = "PUMP IS ON";
+                pumpEl.className = "status-badge status-on";
+                waterFlowEl.classList.add('active');
+            } else {
+                pumpEl.innerText = "PUMP IS OFF";
+                pumpEl.className = "status-badge status-off";
+                waterFlowEl.classList.remove('active');
+            }
+
+            // 4. Update Mode Text and Alert Banner
+            const modeEl = document.getElementById('modeText');
+            const alertBox = document.getElementById('alertBox');
+
+            // Reset alert box
+            alertBox.style.display = 'none';
+            modeEl.style.color = '#666'; // Default color
+
+            if (data.mode === "MAX_TIME_ERROR") {
+                modeEl.innerHTML = "🚨 <b>SYSTEM LOCKED</b> (Ran >60 mins. Hard Reset ESP32)";
+                modeEl.style.color = "#8b0000"; // dark red
+                alertBox.style.display = 'block';
+                alertBox.style.background = '#f8d7da';
+                alertBox.style.color = '#721c24';
+                alertBox.innerHTML = `<strong>CRITICAL ERROR:</strong> Pump ran continuously for 60 minutes. System is permanently locked to prevent overflow. Hardware reset required.`;
+            } else if (data.mode === "FLOW_FAULT_WAIT") {
+                const sec = data.ff_sec_left || 0;
+                const min = Math.floor(sec / 60);
+                const remSec = sec % 60;
+                
+                modeEl.innerHTML = "⚠️ <b>DRY RUN WAIT</b>";
+                modeEl.style.color = "#FF8C00"; // Dark Orange
+                
+                alertBox.style.display = 'block';
+                alertBox.style.background = '#fff3cd';
+                alertBox.style.color = '#856404';
+                alertBox.innerHTML = `<strong>DRY RUN FAULT:</strong> Water did not rise in time. Auto-retrying in <b>${min}m ${remSec}s</b>.`;
+            } else if (data.mode === "ERROR_COOLDOWN") {
+                modeEl.innerHTML = "🚨 <b>ERROR MODE</b> (Pump stopped. Waiting 15 mins...)";
+                modeEl.style.color = "#dc3545";
+            } else if (data.mode === "MANUAL") {
+                modeEl.innerHTML = "⚠️ <b>MANUAL MODE</b> (Auto-logic disabled)";
+                modeEl.style.color = "#fd7e14"; // changed to orange to differentiate from red error
+            } else {
+                modeEl.innerHTML = "✅ <b>AUTO MODE</b> (Sensors active)";
+                modeEl.style.color = "#28a745";
+            }
+        }
+
+        function confirmCommand(cmd) {
+            let msg = "Are you sure?";
+            if (cmd === 'PUMP_ON') msg = "FORCE ON the pump?";
+            if (cmd === 'PUMP_OFF') msg = "FORCE OFF the pump?";
+            if (cmd === 'AUTO') msg = "Switch to AUTO mode?";
+            
+            // Show Custom Dialog
+            document.getElementById('dialogMessage').innerText = msg;
+            const overlay = document.getElementById('confirmOverlay');
+            
+            // Bind the Yes button to this specific command
+            const confirmBtn = document.getElementById('dialogConfirmBtn');
+            confirmBtn.onclick = function() {
+                sendCommand(cmd);
+                closeDialog();
+            };
+            
+            overlay.classList.add('active');
+        }
+
+        function closeDialog() {
+            document.getElementById('confirmOverlay').classList.remove('active');
+        }
+
+        function sendCommand(cmd) {
+            if (ws.readyState === WebSocket.OPEN) {
+                const payload = JSON.stringify({ command: cmd });
+                ws.send(payload);
+            } else {
+                alert("Not connected to server!");
+            }
+        }
+
+        // --- 2. Configuration Modal ---
+        function openSettings() {
+            document.getElementById('setServerHost').value = serverUrl;
+            document.getElementById('settingsOverlay').classList.add('active');
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsOverlay').classList.remove('active');
+        }
+
+        function saveSettings() {
+            // Save potential new URL
+            const newUrl = document.getElementById('setServerHost').value.trim();
+            if (newUrl !== serverUrl) {
+                serverUrl = newUrl;
+                localStorage.setItem('pumpServerUrl', serverUrl);
+                connectWebSocket(); // reconnect
+            }
+
+            // Send Settings to ESP32
+            if (ws.readyState === WebSocket.OPEN) {
+                const payload = JSON.stringify({
+                    command: "SETTINGS",
+                    min: parseInt(document.getElementById('setMin').value),
+                    max: parseInt(document.getElementById('setMax').value),
+                    pre: parseInt(document.getElementById('setPre').value),
+                    rec: parseInt(document.getElementById('setRec').value),
+                    sched: document.getElementById('setSched').checked,
+                    s1: parseInt(document.getElementById('setS1').value),
+                    s2: parseInt(document.getElementById('setS2').value),
+                    s3: parseInt(document.getElementById('setS3').value),
+                    ff_en: document.getElementById('setFfEn').checked,
+                    ff_chk: parseInt(document.getElementById('setFfChk').value),
+                    ff_inc: parseInt(document.getElementById('setFfInc').value),
+                    ff_ret: parseInt(document.getElementById('setFfRet').value)
+                });
+                ws.send(payload);
+                closeSettings();
+            } else {
+                alert("Settings saved locally, but not applied to pump. Not connected to server!");
+                closeSettings();
+            }
+        }
+
+        // --- 3. Mode Manager ---
+        const defaultModes = [
+            { name: "Default", min: 20, max: 90, pre: 65, rec: 70, sched: true, s1: 8, s2: 14, s3: 20 },
+            { name: "Summer (Heavy Use)", min: 40, max: 100, pre: 80, rec: 50, sched: true, s1: 7, s2: 13, s3: 19 },
+            { name: "Winter (Low Use)", min: 10, max: 80, pre: 50, rec: 40, sched: false, s1: 8, s2: 14, s3: 20 }
+        ];
+
+        let savedModes = [];
+        
+        function loadModes() {
+            const stored = localStorage.getItem('pumpModes');
+            if (stored) {
+                savedModes = JSON.parse(stored);
+            } else {
+                savedModes = [...defaultModes];
+                saveModesToStorage();
+            }
+            renderModes();
+        }
+
+        function saveModesToStorage() {
+            localStorage.setItem('pumpModes', JSON.stringify(savedModes));
+        }
+
+        // Time Formatting Helper (e.g., 14 -> "2 PM")
+        function formatHour(h) {
+            if (h === 0) return "12 AM";
+            if (h === 12) return "12 PM";
+            if (h > 12) return (h - 12) + " PM";
+            return h + " AM";
+        }
+
+        function renderModes() {
+            const list = document.getElementById('modeList');
+            list.innerHTML = '';
+            
+            savedModes.forEach((mode, index) => {
+                const li = document.createElement('li');
+                li.className = 'mode-item';
+                li.innerHTML = `
+                    <div class="mode-info">
+                        <strong>${mode.name}</strong>
+                        <span>${mode.min}% - ${mode.max}% | Sched: ${mode.sched ? (formatHour(mode.s1) + ', ' + formatHour(mode.s2) + ', ' + formatHour(mode.s3)) : 'OFF'}</span>
+                    </div>
+                    <div class="mode-actions">
+                        <button class="btn-apply" onclick="applyMode(${index})">Apply</button>
+                        <button class="btn-del" onclick="deleteMode(${index})">Del</button>
+                    </div>
+                `;
+                list.appendChild(li);
+            });
+        }
+
+        function openModeManager() {
+            loadModes();
+            document.getElementById('modeOverlay').classList.add('active');
+        }
+
+        function closeModeManager() {
+            document.getElementById('modeOverlay').classList.remove('active');
+        }
+
+        function applyMode(index) {
+            const mode = savedModes[index];
+            if (ws.readyState === WebSocket.OPEN) {
+                const payload = JSON.stringify({
+                    command: "SETTINGS",
+                    min: mode.min,
+                    max: mode.max,
+                    pre: mode.pre,
+                    rec: mode.rec,
+                    sched: mode.sched,
+                    s1: mode.s1,
+                    s2: mode.s2,
+                    s3: mode.s3
+                });
+                ws.send(payload);
+                alert(`Applied Mode: ${mode.name}`);
+                closeModeManager();
+            } else {
+                alert("Not connected to server!");
+            }
+        }
+
+        function deleteMode(index) {
+            if (confirm("Delete this mode?")) {
+                savedModes.splice(index, 1);
+                saveModesToStorage();
+                renderModes();
+            }
+        }
+
+        function openCreateMode() {
+            closeModeManager();
+            
+            // Pre-fill fields with whatever is currently shown in the configuration box natively
+            document.getElementById('newModeName').value = "";
+            document.getElementById('newMin').value = document.getElementById('setMin').value || 20;
+            document.getElementById('newMax').value = document.getElementById('setMax').value || 90;
+            document.getElementById('newPre').value = document.getElementById('setPre').value || 65;
+            document.getElementById('newRec').value = document.getElementById('setRec').value || 70;
+            document.getElementById('newSched').checked = document.getElementById('setSched').checked;
+            
+            document.getElementById('newS1').value = document.getElementById('setS1').value || 8;
+            document.getElementById('newS2').value = document.getElementById('setS2').value || 14;
+            document.getElementById('newS3').value = document.getElementById('setS3').value || 20;
+
+            document.getElementById('createModeOverlay').classList.add('active');
+        }
+
+        function closeCreateMode() {
+            document.getElementById('createModeOverlay').classList.remove('active');
+            openModeManager(); // Reopen manager on close
+        }
+
+        function saveNewMode() {
+            const name = document.getElementById('newModeName').value.trim();
+            if (!name) {
+                alert("Please enter a Mode Name!");
+                return;
+            }
+
+            const newMode = {
+                name: name,
+                min: parseInt(document.getElementById('newMin').value) || 20,
+                max: parseInt(document.getElementById('newMax').value) || 90,
+                pre: parseInt(document.getElementById('newPre').value) || 65,
+                rec: parseInt(document.getElementById('newRec').value) || 70,
+                sched: document.getElementById('newSched').checked,
+                s1: parseInt(document.getElementById('newS1').value) || 8,
+                s2: parseInt(document.getElementById('newS2').value) || 14,
+                s3: parseInt(document.getElementById('newS3').value) || 20
+            };
+
+            savedModes.push(newMode);
+            saveModesToStorage();
+            closeCreateMode(); // This will auto-open the mode manager and re-render
+        }
+
+        // Initialize Modes secretly on load
+        function populateTimeSelects() {
+            const selects = ['setS1', 'setS2', 'setS3', 'newS1', 'newS2', 'newS3'];
+            let optionsHTML = '';
+            for (let i = 0; i < 24; i++) {
+                optionsHTML += `<option value="${i}">${formatHour(i)}</option>`;
+            }
+            selects.forEach(id => {
+                const el = document.getElementById(id);
+                if(el) el.innerHTML = optionsHTML;
+            });
+        }
+        
+        populateTimeSelects();
+        loadModes();
+    </script>
+</body>
+</html>
